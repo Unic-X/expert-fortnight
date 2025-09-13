@@ -3,17 +3,17 @@ package model
 import "time"
 
 type Event struct {
-	ID              string    `json:"id" db:"id"`
-	Name            string    `json:"name" db:"name"`
-	Description     string    `json:"description" db:"description"`
-	Venue           string    `json:"venue" db:"venue"`
-	EventTime       time.Time `json:"event_time" db:"event_time"`
-	TotalCapacity   int       `json:"total_capacity" db:"total_capacity"`
-	AvailableSeats  int       `json:"available_seats" db:"available_seats"`
-	Price           float64   `json:"price" db:"price"`
-	CreatedBy       string    `json:"created_by" db:"created_by"`
-	CreatedAt       time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at" db:"updated_at"`
+	ID             string    `json:"id" db:"id"`
+	Name           string    `json:"name" db:"name"`
+	Description    string    `json:"description" db:"description"`
+	Venue          string    `json:"venue" db:"venue"`
+	EventTime      time.Time `json:"event_time" db:"event_time"`
+	TotalCapacity  int       `json:"total_capacity" db:"total_capacity"`
+	AvailableSeats int       `json:"available_seats" db:"available_seats"`
+	Price          float64   `json:"price" db:"price"`
+	CreatedBy      string    `json:"created_by" db:"created_by"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at" db:"updated_at"`
 }
 
 type BookingStatus string
@@ -25,16 +25,16 @@ const (
 )
 
 type Booking struct {
-	ID            string        `json:"id" db:"id"`
-	UserID        string        `json:"user_id" db:"user_id"`
-	EventID       string        `json:"event_id" db:"event_id"`
-	Quantity      int           `json:"quantity" db:"quantity"`
-	TotalAmount   float64       `json:"total_amount" db:"total_amount"`
-	Status        BookingStatus `json:"status" db:"status"`
-	BookingTime   time.Time     `json:"booking_time" db:"booking_time"`
-	CancelledAt   *time.Time    `json:"cancelled_at,omitempty" db:"cancelled_at"`
-	CreatedAt     time.Time     `json:"created_at" db:"created_at"`
-	UpdatedAt     time.Time     `json:"updated_at" db:"updated_at"`
+	ID          string        `json:"id" db:"id"`
+	UserID      string        `json:"user_id" db:"user_id"`
+	EventID     string        `json:"event_id" db:"event_id"`
+	Quantity    int           `json:"quantity" db:"quantity"`
+	TotalAmount float64       `json:"total_amount" db:"total_amount"`
+	Status      BookingStatus `json:"status" db:"status"`
+	BookingTime time.Time     `json:"booking_time" db:"booking_time"`
+	CancelledAt *time.Time    `json:"cancelled_at,omitempty" db:"cancelled_at"`
+	CreatedAt   time.Time     `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time     `json:"updated_at" db:"updated_at"`
 }
 
 type EventRepository interface {
