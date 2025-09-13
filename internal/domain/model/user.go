@@ -18,3 +18,10 @@ type UserRepository interface {
 	GetByID(id string) (*User, error)
 	GetByEmail(email string) (*User, error)
 }
+
+type RegisterRequest struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Role     string `json:"role"`
+}

@@ -11,19 +11,9 @@ import (
 	domain_evently "evently/internal/domain/model"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
-	"gopkg.in/yaml.v2"
 )
-
-func LoadConfig() *domain_evently.Config {
-	scraperConfig, err := loadEventlyConfig("./scraper.yaml")
-
-	if err != nil {
-		panic(err)
-	}
-
-	return scraperConfig
-}
 
 func MigrateDB(cfg domain_evently.DBConfig) error {
 	var dsn string
@@ -35,7 +25,7 @@ func MigrateDB(cfg domain_evently.DBConfig) error {
 		)
 	}
 
-	db, err := sql.Open("postgres", dsn)
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return fmt.Errorf("sql.Open: %w", err)
 	}
@@ -48,29 +38,22 @@ func MigrateDB(cfg domain_evently.DBConfig) error {
 	return nil
 }
 
-func loadDBConfig() domain_evently.DBConfig {
-	return domain_evently.DBConfig{
-		Host:     getEnv("DB_HOST", "localhost"),
-		Port:     getEnv("DB_PORT", "5432"),
-		User:     getEnv("DB_USER", "arman"),
-		Password: getEnv("DB_PASSWORD", "password"),
-		DBName:   getEnv("DB_NAME", "postgres"),
-		SSLMode:  getEnv("DB_SSLMODE", "disable"),
+func LoadConfig() *domain_evently.Config {
+	return &domain_evently.Config{
+		DB: domain_evently.DBConfig{
+			URL:           getEnv("DATABASE_URL", ""),
+			Host:          getEnv("DB_HOST", "localhost"),
+			Port:          getEnv("DB_PORT", "5432"),
+			User:          getEnv("DB_USER", "arman"),
+			Password:      getEnv("DB_PASSWORD", ""),
+			DBName:        getEnv("DB_NAME", "postgres"),
+			SSLMode:       getEnv("DB_SSLMODE", "disable"),
+			MigrationsDir: getEnv("MIGRATIONS_DIR", "../migrations"),
+		},
+		JWT: domain_evently.JWTConfig{
+			SecretKey: getEnv("JWT_SECRET_KEY", "your-secret-key-change-in-production"),
+		},
 	}
-}
-
-func loadEventlyConfig(fileLocation string) (*domain_evently.Config, error) {
-	data, err := os.ReadFile(fileLocation)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read scraper config: %w", err)
-	}
-
-	var config domain_evently.Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal scraper config: %w", err)
-	}
-
-	return &config, nil
 }
 
 func NewPGXPool(ctx context.Context, cfg domain_evently.DBConfig) (*pgxpool.Pool, error) {

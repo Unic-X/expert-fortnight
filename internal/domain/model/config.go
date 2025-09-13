@@ -11,6 +11,11 @@ type DBConfig struct {
 	MigrationsDir string `json:"migrations_dir"`
 }
 
+type JWTConfig struct {
+	SecretKey string `yaml:"secret_key"`
+}
+
 type Config struct {
-	DB DBConfig
+	DB  DBConfig  `yaml:"db"`
+	JWT JWTConfig `yaml:"jwt"`
 }
