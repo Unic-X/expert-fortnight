@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"evently/internal/domain/model"
+	"evently/internal/domain/events"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -14,11 +14,11 @@ type eventRepositoryImpl struct {
 	db *pgxpool.Pool
 }
 
-func NewEventRepository(db *pgxpool.Pool) model.EventRepository {
+func NewEventRepository(db *pgxpool.Pool) events.EventRepository {
 	return &eventRepositoryImpl{db: db}
 }
 
-func (r *eventRepositoryImpl) Create(event *model.Event) error {
+func (r *eventRepositoryImpl) Create(event *events.Event) error {
 	query := `
 		INSERT INTO events (id, name, description, venue, event_time, total_capacity, 
 			available_seats, price, created_by, created_at, updated_at)
@@ -32,7 +32,7 @@ func (r *eventRepositoryImpl) Create(event *model.Event) error {
 	return err
 }
 
-func (r *eventRepositoryImpl) Update(event *model.Event) error {
+func (r *eventRepositoryImpl) Update(event *events.Event) error {
 	query := `
 		UPDATE events 
 		SET name = $2, description = $3, venue = $4, event_time = $5, 
@@ -69,13 +69,13 @@ func (r *eventRepositoryImpl) Delete(id string) error {
 	return nil
 }
 
-func (r *eventRepositoryImpl) GetByID(id string) (*model.Event, error) {
+func (r *eventRepositoryImpl) GetByID(id string) (*events.Event, error) {
 	query := `
 		SELECT id, name, description, venue, event_time, total_capacity, 
 			available_seats, price, created_by, created_at, updated_at
 		FROM events WHERE id = $1`
 
-	event := &model.Event{}
+	event := &events.Event{}
 	err := r.db.QueryRow(context.Background(), query, id).Scan(
 		&event.ID, &event.Name, &event.Description, &event.Venue, &event.EventTime,
 		&event.TotalCapacity, &event.AvailableSeats, &event.Price, &event.CreatedBy,
@@ -88,7 +88,7 @@ func (r *eventRepositoryImpl) GetByID(id string) (*model.Event, error) {
 	return event, nil
 }
 
-func (r *eventRepositoryImpl) ListUpcoming(limit, offset int) ([]*model.Event, error) {
+func (r *eventRepositoryImpl) ListUpcoming(limit, offset int) ([]*events.Event, error) {
 	query := `
 		SELECT id, name, description, venue, event_time, total_capacity, 
 			available_seats, price, created_by, created_at, updated_at
@@ -103,9 +103,9 @@ func (r *eventRepositoryImpl) ListUpcoming(limit, offset int) ([]*model.Event, e
 	}
 	defer rows.Close()
 
-	var events []*model.Event
+	var events_list []*events.Event
 	for rows.Next() {
-		event := &model.Event{}
+		event := &events.Event{}
 		err := rows.Scan(
 			&event.ID, &event.Name, &event.Description, &event.Venue, &event.EventTime,
 			&event.TotalCapacity, &event.AvailableSeats, &event.Price, &event.CreatedBy,
@@ -113,13 +113,13 @@ func (r *eventRepositoryImpl) ListUpcoming(limit, offset int) ([]*model.Event, e
 		if err != nil {
 			return nil, err
 		}
-		events = append(events, event)
+		events_list = append(events_list, event)
 	}
 
-	return events, rows.Err()
+	return events_list, rows.Err()
 }
 
-func (r *eventRepositoryImpl) ListAll(limit, offset int) ([]*model.Event, error) {
+func (r *eventRepositoryImpl) ListAll(limit, offset int) ([]*events.Event, error) {
 	query := `
 		SELECT id, name, description, venue, event_time, total_capacity, 
 			available_seats, price, created_by, created_at, updated_at
@@ -133,9 +133,9 @@ func (r *eventRepositoryImpl) ListAll(limit, offset int) ([]*model.Event, error)
 	}
 	defer rows.Close()
 
-	var events []*model.Event
+	var events_list []*events.Event
 	for rows.Next() {
-		event := &model.Event{}
+		event := &events.Event{}
 		err := rows.Scan(
 			&event.ID, &event.Name, &event.Description, &event.Venue, &event.EventTime,
 			&event.TotalCapacity, &event.AvailableSeats, &event.Price, &event.CreatedBy,
@@ -143,10 +143,10 @@ func (r *eventRepositoryImpl) ListAll(limit, offset int) ([]*model.Event, error)
 		if err != nil {
 			return nil, err
 		}
-		events = append(events, event)
+		events_list = append(events_list, event)
 	}
 
-	return events, rows.Err()
+	return events_list, rows.Err()
 }
 
 func (r *eventRepositoryImpl) UpdateAvailableSeats(eventID string, quantity int) error {
@@ -167,7 +167,7 @@ func (r *eventRepositoryImpl) UpdateAvailableSeats(eventID string, quantity int)
 	return nil
 }
 
-func (r *eventRepositoryImpl) GetMostPopularEvents(limit int) ([]*model.EventAnalytics, error) {
+func (r *eventRepositoryImpl) GetMostPopularEvents(ctx context.Context, limit int) ([]*events.EventAnalytics, error) {
 	query := `
 		SELECT 
 			e.id as event_id,
@@ -188,9 +188,9 @@ func (r *eventRepositoryImpl) GetMostPopularEvents(limit int) ([]*model.EventAna
 	}
 	defer rows.Close()
 
-	var analytics []*model.EventAnalytics
+	var analytics []*events.EventAnalytics
 	for rows.Next() {
-		analytic := &model.EventAnalytics{}
+		analytic := &events.EventAnalytics{}
 		err := rows.Scan(
 			&analytic.EventID, &analytic.EventName, &analytic.TotalBookings,
 			&analytic.TotalRevenue, &analytic.CapacityUsed, &analytic.CapacityTotal)

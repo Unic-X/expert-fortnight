@@ -5,6 +5,10 @@ import (
 
 	"evently/internal/config"
 	"evently/internal/delivery/http/middleware"
+	"evently/internal/domain/booking"
+	"evently/internal/domain/events"
+	"evently/internal/domain/waitlist"
+
 	"evently/internal/domain/model"
 	"evently/internal/domain/usecase"
 	ucImpl "evently/internal/usecase/impl"
@@ -23,16 +27,16 @@ type Container struct {
 
 	// Repositories
 	UserRepo         model.UserRepository
-	EventRepo        model.EventRepository
-	BookingRepo      model.BookingRepository
-	WaitlistRepo     model.WaitlistRepository
+	EventRepo        events.EventRepository
+	BookingRepo      booking.BookingRepository
+	WaitlistRepo     waitlist.WaitlistRepository
 	NotificationRepo model.NotificationRepository
 
 	// Use Cases
 	AuthUseCase         usecase.AuthUseCase
-	EventUseCase        usecase.EventUsecase
-	BookingUseCase      usecase.BookingUsecase
-	WaitlistUseCase     usecase.WaitlistUsecase
+	EventUseCase        events.EventUsecase
+	BookingUseCase      booking.BookingUsecase
+	WaitlistUseCase     waitlist.WaitlistUsecase
 	NotificationUseCase usecase.NotificationUsecase
 
 	// Middleware

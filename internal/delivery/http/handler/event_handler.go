@@ -4,17 +4,16 @@ import (
 	"net/http"
 	"strconv"
 
-	"evently/internal/domain/model"
-	"evently/internal/domain/usecase"
+	"evently/internal/domain/events"
 
 	"github.com/gin-gonic/gin"
 )
 
 type EventHandler struct {
-	eventUsecase usecase.EventUsecase
+	eventUsecase events.EventUsecase
 }
 
-func NewEventHandler(eventUsecase usecase.EventUsecase) *EventHandler {
+func NewEventHandler(eventUsecase events.EventUsecase) *EventHandler {
 	return &EventHandler{
 		eventUsecase: eventUsecase,
 	}
@@ -50,7 +49,7 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 }
 
 func (h *EventHandler) CreateEvent(c *gin.Context) {
-	var event model.Event
+	var event events.Event
 	if err := c.ShouldBindJSON(&event); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -78,7 +77,7 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 		return
 	}
 
-	var event model.Event
+	var event events.Event
 	if err := c.ShouldBindJSON(&event); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

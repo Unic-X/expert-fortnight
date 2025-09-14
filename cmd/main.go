@@ -23,9 +23,7 @@ func main() {
 
 	// Create application
 	app := NewApplication(container)
-	app.SetupRoutes()
 
-	// Start server
 	app.Start(ctx)
 
 	<-ctx.Done()

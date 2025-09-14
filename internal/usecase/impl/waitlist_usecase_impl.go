@@ -5,23 +5,24 @@ import (
 	"fmt"
 	"time"
 
+	"evently/internal/domain/events"
 	"evently/internal/domain/model"
-	"evently/internal/domain/usecase"
+	"evently/internal/domain/waitlist"
 
 	"github.com/google/uuid"
 )
 
 type waitlistUsecaseImpl struct {
-	waitlistRepo     model.WaitlistRepository
-	eventRepo        model.EventRepository
+	waitlistRepo     waitlist.WaitlistRepository
+	eventRepo        events.EventRepository
 	notificationRepo model.NotificationRepository
 }
 
 func NewWaitlistUsecase(
-	waitlistRepo model.WaitlistRepository,
-	eventRepo model.EventRepository,
+	waitlistRepo waitlist.WaitlistRepository,
+	eventRepo events.EventRepository,
 	notificationRepo model.NotificationRepository,
-) usecase.WaitlistUsecase {
+) waitlist.WaitlistUsecase {
 	return &waitlistUsecaseImpl{
 		waitlistRepo:     waitlistRepo,
 		eventRepo:        eventRepo,
@@ -56,13 +57,13 @@ func (u *waitlistUsecaseImpl) JoinWaitlist(ctx context.Context, userID, eventID 
 	}
 
 	// Create waitlist entry
-	waitlist := &model.Waitlist{
+	waitlist := &waitlist.Waitlist{
 		ID:        uuid.New().String(),
 		UserID:    userID,
 		EventID:   eventID,
 		Quantity:  quantity,
 		Priority:  0, // Default priority
-		Status:    model.WaitlistStatusActive,
+		Status:    waitlist.WaitlistStatusActive,
 		JoinedAt:  time.Now(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -82,7 +83,7 @@ func (u *waitlistUsecaseImpl) LeaveWaitlist(ctx context.Context, userID, eventID
 	return u.waitlistRepo.Delete(waitlist.ID)
 }
 
-func (u *waitlistUsecaseImpl) GetUserWaitlist(ctx context.Context, userID string, limit, offset int) ([]*model.Waitlist, error) {
+func (u *waitlistUsecaseImpl) GetUserWaitlist(ctx context.Context, userID string, limit, offset int) ([]*waitlist.Waitlist, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -93,7 +94,7 @@ func (u *waitlistUsecaseImpl) GetUserWaitlist(ctx context.Context, userID string
 	return u.waitlistRepo.GetByUserID(userID, limit, offset)
 }
 
-func (u *waitlistUsecaseImpl) GetEventWaitlist(ctx context.Context, eventID string, limit, offset int) ([]*model.Waitlist, error) {
+func (u *waitlistUsecaseImpl) GetEventWaitlist(ctx context.Context, eventID string, limit, offset int) ([]*waitlist.Waitlist, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -127,7 +128,7 @@ func (u *waitlistUsecaseImpl) ProcessWaitlistNotifications(ctx context.Context, 
 			}
 
 			// Update waitlist status and set expiration
-			entry.Status = model.WaitlistStatusNotified
+			entry.Status = waitlist.WaitlistStatusNotified
 			now := time.Now()
 			entry.NotifiedAt = &now
 			// Give user 30 minutes to complete booking
@@ -163,7 +164,7 @@ func (u *waitlistUsecaseImpl) GetWaitlistPosition(ctx context.Context, userID, e
 	// Find user's position
 	position := 1
 	for _, entry := range allEntries {
-		if entry.Status != model.WaitlistStatusActive {
+		if entry.Status != waitlist.WaitlistStatusActive {
 			continue
 		}
 		if entry.ID == userEntry.ID {
@@ -177,34 +178,34 @@ func (u *waitlistUsecaseImpl) GetWaitlistPosition(ctx context.Context, userID, e
 
 func (u *waitlistUsecaseImpl) ConvertWaitlistToBooking(ctx context.Context, waitlistID string) error {
 	// Get waitlist entry
-	waitlist, err := u.waitlistRepo.GetByID(waitlistID)
+	oldWaitlist, err := u.waitlistRepo.GetByID(waitlistID)
 	if err != nil {
 		return fmt.Errorf("waitlist entry not found: %w", err)
 	}
 
 	// Check if notification is still valid
-	if waitlist.Status != model.WaitlistStatusNotified {
+	if oldWaitlist.Status != waitlist.WaitlistStatusNotified {
 		return fmt.Errorf("waitlist entry is not in notified status")
 	}
 
-	if waitlist.ExpiresAt != nil && waitlist.ExpiresAt.Before(time.Now()) {
+	if oldWaitlist.ExpiresAt != nil && oldWaitlist.ExpiresAt.Before(time.Now()) {
 		return fmt.Errorf("waitlist notification has expired")
 	}
 
 	// Update status to converted
-	waitlist.Status = model.WaitlistStatusConverted
-	waitlist.UpdatedAt = time.Now()
+	oldWaitlist.Status = waitlist.WaitlistStatusConverted
+	oldWaitlist.UpdatedAt = time.Now()
 
-	return u.waitlistRepo.Update(waitlist)
+	return u.waitlistRepo.Update(oldWaitlist)
 }
 
 func (u *waitlistUsecaseImpl) CleanupExpiredWaitlist(ctx context.Context) error {
 	return u.waitlistRepo.CleanupExpired()
 }
 
-func (u *waitlistUsecaseImpl) notifyWaitlistUser(ctx context.Context, waitlist *model.Waitlist) error {
+func (u *waitlistUsecaseImpl) notifyWaitlistUser(ctx context.Context, oldWaitlist *waitlist.Waitlist) error {
 	// Get event details for notification
-	event, err := u.eventRepo.GetByID(waitlist.EventID)
+	event, err := u.eventRepo.GetByID(oldWaitlist.EventID)
 	if err != nil {
 		return fmt.Errorf("failed to get event details: %w", err)
 	}
@@ -212,11 +213,11 @@ func (u *waitlistUsecaseImpl) notifyWaitlistUser(ctx context.Context, waitlist *
 	// Create notification
 	notification := &model.Notification{
 		ID:        uuid.New().String(),
-		UserID:    waitlist.UserID,
-		EventID:   waitlist.EventID,
+		UserID:    oldWaitlist.UserID,
+		EventID:   oldWaitlist.EventID,
 		Type:      model.NotificationTypeWaitlistSpotAvailable,
 		Title:     "Spot Available!",
-		Message:   fmt.Sprintf("A spot is now available for %s. You have 30 minutes to complete your booking for %d ticket(s).", event.Name, waitlist.Quantity),
+		Message:   fmt.Sprintf("A spot is now available for %s. You have 30 minutes to complete your booking for %d ticket(s).", event.Name, oldWaitlist.Quantity),
 		IsRead:    false,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -225,6 +226,6 @@ func (u *waitlistUsecaseImpl) notifyWaitlistUser(ctx context.Context, waitlist *
 	return u.notificationRepo.Create(notification)
 }
 
-func (u *waitlistUsecaseImpl) GetWaitlistByID(ctx context.Context, waitlistID string) (*model.Waitlist, error) {
+func (u *waitlistUsecaseImpl) GetWaitlistByID(ctx context.Context, waitlistID string) (*waitlist.Waitlist, error) {
 	return u.waitlistRepo.GetByID(waitlistID)
 }

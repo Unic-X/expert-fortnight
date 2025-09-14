@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"evently/internal/domain/model"
+	"evently/internal/domain/booking"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -13,25 +13,25 @@ type bookingRepositoryImpl struct {
 	db *pgxpool.Pool
 }
 
-func NewBookingRepository(db *pgxpool.Pool) model.BookingRepository {
+func NewBookingRepository(db *pgxpool.Pool) booking.BookingRepository {
 	return &bookingRepositoryImpl{db: db}
 }
 
-func (r *bookingRepositoryImpl) Create(booking *model.Booking) error {
+func (r *bookingRepositoryImpl) Create(newBooking *booking.Booking) error {
 	query := `
 		INSERT INTO bookings (id, user_id, event_id, quantity, total_amount, 
 			status, booking_time, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	_, err := r.db.Exec(context.Background(), query,
-		booking.ID, booking.UserID, booking.EventID, booking.Quantity,
-		booking.TotalAmount, booking.Status, booking.BookingTime,
-		booking.CreatedAt, booking.UpdatedAt)
+		newBooking.ID, newBooking.UserID, newBooking.EventID, newBooking.Quantity,
+		newBooking.TotalAmount, newBooking.Status, newBooking.BookingTime,
+		newBooking.CreatedAt, newBooking.UpdatedAt)
 
 	return err
 }
 
-func (r *bookingRepositoryImpl) Update(booking *model.Booking) error {
+func (r *bookingRepositoryImpl) Update(oldBooking *booking.Booking) error {
 	query := `
 		UPDATE bookings 
 		SET quantity = $2, total_amount = $3, status = $4, 
@@ -39,8 +39,8 @@ func (r *bookingRepositoryImpl) Update(booking *model.Booking) error {
 		WHERE id = $1`
 
 	result, err := r.db.Exec(context.Background(), query,
-		booking.ID, booking.Quantity, booking.TotalAmount, booking.Status,
-		booking.CancelledAt, booking.UpdatedAt)
+		oldBooking.ID, oldBooking.Quantity, oldBooking.TotalAmount, oldBooking.Status,
+		oldBooking.CancelledAt, oldBooking.UpdatedAt)
 
 	if err != nil {
 		return err
@@ -53,26 +53,26 @@ func (r *bookingRepositoryImpl) Update(booking *model.Booking) error {
 	return nil
 }
 
-func (r *bookingRepositoryImpl) GetByID(id string) (*model.Booking, error) {
+func (r *bookingRepositoryImpl) GetByID(id string) (*booking.Booking, error) {
 	query := `
 		SELECT id, user_id, event_id, quantity, total_amount, status, 
 			booking_time, cancelled_at, created_at, updated_at
 		FROM bookings WHERE id = $1`
 
-	booking := &model.Booking{}
+	oldBooking := &booking.Booking{}
 	err := r.db.QueryRow(context.Background(), query, id).Scan(
-		&booking.ID, &booking.UserID, &booking.EventID, &booking.Quantity,
-		&booking.TotalAmount, &booking.Status, &booking.BookingTime,
-		&booking.CancelledAt, &booking.CreatedAt, &booking.UpdatedAt)
+		&oldBooking.ID, &oldBooking.UserID, &oldBooking.EventID, &oldBooking.Quantity,
+		&oldBooking.TotalAmount, &oldBooking.Status, &oldBooking.BookingTime,
+		&oldBooking.CancelledAt, &oldBooking.CreatedAt, &oldBooking.UpdatedAt)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return booking, nil
+	return oldBooking, nil
 }
 
-func (r *bookingRepositoryImpl) GetByUserID(userID string, limit, offset int) ([]*model.Booking, error) {
+func (r *bookingRepositoryImpl) GetByUserID(userID string, limit, offset int) ([]*booking.Booking, error) {
 	query := `
 		SELECT id, user_id, event_id, quantity, total_amount, status, 
 			booking_time, cancelled_at, created_at, updated_at
@@ -87,9 +87,9 @@ func (r *bookingRepositoryImpl) GetByUserID(userID string, limit, offset int) ([
 	}
 	defer rows.Close()
 
-	var bookings []*model.Booking
+	var bookings []*booking.Booking
 	for rows.Next() {
-		booking := &model.Booking{}
+		booking := &booking.Booking{}
 		err := rows.Scan(
 			&booking.ID, &booking.UserID, &booking.EventID, &booking.Quantity,
 			&booking.TotalAmount, &booking.Status, &booking.BookingTime,
@@ -103,7 +103,7 @@ func (r *bookingRepositoryImpl) GetByUserID(userID string, limit, offset int) ([
 	return bookings, rows.Err()
 }
 
-func (r *bookingRepositoryImpl) GetByEventID(eventID string, limit, offset int) ([]*model.Booking, error) {
+func (r *bookingRepositoryImpl) GetByEventID(eventID string, limit, offset int) ([]*booking.Booking, error) {
 	query := `
 		SELECT id, user_id, event_id, quantity, total_amount, status, 
 			booking_time, cancelled_at, created_at, updated_at
@@ -118,9 +118,9 @@ func (r *bookingRepositoryImpl) GetByEventID(eventID string, limit, offset int) 
 	}
 	defer rows.Close()
 
-	var bookings []*model.Booking
+	var bookings []*booking.Booking
 	for rows.Next() {
-		booking := &model.Booking{}
+		booking := &booking.Booking{}
 		err := rows.Scan(
 			&booking.ID, &booking.UserID, &booking.EventID, &booking.Quantity,
 			&booking.TotalAmount, &booking.Status, &booking.BookingTime,
@@ -152,7 +152,7 @@ func (r *bookingRepositoryImpl) GetTotalBookings() (int64, error) {
 	return count, err
 }
 
-func (r *bookingRepositoryImpl) GetBookingAnalytics(eventID string) (*model.BookingAnalytics, error) {
+func (r *bookingRepositoryImpl) GetBookingAnalytics(eventID string) (*booking.BookingAnalytics, error) {
 	query := `
 		SELECT 
 			event_id,
@@ -165,7 +165,7 @@ func (r *bookingRepositoryImpl) GetBookingAnalytics(eventID string) (*model.Book
 		WHERE event_id = $1
 		GROUP BY event_id`
 
-	analytics := &model.BookingAnalytics{}
+	analytics := &booking.BookingAnalytics{}
 	err := r.db.QueryRow(context.Background(), query, eventID).Scan(
 		&analytics.EventID, &analytics.TotalBookings, &analytics.TotalRevenue,
 		&analytics.Confirmed, &analytics.Cancelled, &analytics.Pending)

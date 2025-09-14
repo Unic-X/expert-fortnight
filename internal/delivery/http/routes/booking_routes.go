@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupBookingRoutes(router *gin.Engine, bookingHandler *handler.BookingHandler, jwtMiddleware *middleware.JWTConfig) {
-	bookingGroup := router.Group("/api/bookings")
+func SetupBookingRoutes(router *gin.RouterGroup, bookingHandler *handler.BookingHandler, jwtMiddleware *middleware.JWTConfig) {
+	bookingGroup := router.Group("/bookings")
 	bookingGroup.Use(jwtMiddleware.AuthMiddleware())
 	{
 		bookingGroup.POST("", bookingHandler.CreateBooking)

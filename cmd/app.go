@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"evently/internal/delivery/http/handler"
 	"evently/internal/delivery/http/routes"
 	"evently/internal/di"
 	"log"
@@ -21,24 +20,13 @@ func NewApplication(container *di.Container) *Application {
 	}
 }
 
-func (a *Application) SetupRoutes() {
-	authHandler := handler.NewAuthHandler(a.container.AuthUseCase)
-	eventHandler := handler.NewEventHandler(a.container.EventUseCase)
-	bookingHandler := handler.NewBookingHandler(a.container.BookingUseCase, a.container.WaitlistUseCase)
-	adminHandler := handler.NewAdminHandler(a.container.EventUseCase, a.container.BookingUseCase)
-
-	// Setup routes
-	routes.SetupAuthRoutes(a.container.Server, authHandler)
-	routes.SetupEventRoutes(a.container.Server, eventHandler, a.container.JWTMiddleware)
-	routes.SetupBookingRoutes(a.container.Server, bookingHandler, a.container.JWTMiddleware)
-	routes.SetupAdminRoutes(a.container.Server, adminHandler, a.container.JWTMiddleware)
-}
-
 func (a *Application) Start(ctx context.Context) {
 	a.server = &http.Server{
 		Addr:    ":8080",
 		Handler: a.container.Server,
 	}
+
+	routes.AllRoutes(a.container.Server, a.container, a.container.JWTMiddleware)
 
 	go func() {
 		log.Println("Starting server on :8080")

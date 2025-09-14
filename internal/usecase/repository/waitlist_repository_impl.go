@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"evently/internal/domain/model"
+	"evently/internal/domain/waitlist"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -14,11 +14,11 @@ type waitlistRepositoryImpl struct {
 	db *pgxpool.Pool
 }
 
-func NewWaitlistRepository(db *pgxpool.Pool) model.WaitlistRepository {
+func NewWaitlistRepository(db *pgxpool.Pool) waitlist.WaitlistRepository {
 	return &waitlistRepositoryImpl{db: db}
 }
 
-func (r *waitlistRepositoryImpl) Create(waitlist *model.Waitlist) error {
+func (r *waitlistRepositoryImpl) Create(waitlist *waitlist.Waitlist) error {
 	query := `
 		INSERT INTO waitlist (id, user_id, event_id, quantity, priority, status, 
 			joined_at, created_at, updated_at)
@@ -32,7 +32,7 @@ func (r *waitlistRepositoryImpl) Create(waitlist *model.Waitlist) error {
 	return err
 }
 
-func (r *waitlistRepositoryImpl) Update(waitlist *model.Waitlist) error {
+func (r *waitlistRepositoryImpl) Update(waitlist *waitlist.Waitlist) error {
 	query := `
 		UPDATE waitlist 
 		SET quantity = $2, priority = $3, status = $4, notified_at = $5, 
@@ -69,13 +69,13 @@ func (r *waitlistRepositoryImpl) Delete(id string) error {
 	return nil
 }
 
-func (r *waitlistRepositoryImpl) GetByID(id string) (*model.Waitlist, error) {
+func (r *waitlistRepositoryImpl) GetByID(id string) (*waitlist.Waitlist, error) {
 	query := `
 		SELECT id, user_id, event_id, quantity, priority, status, 
 			joined_at, notified_at, expires_at, created_at, updated_at
 		FROM waitlist WHERE id = $1`
 
-	waitlist := &model.Waitlist{}
+	waitlist := &waitlist.Waitlist{}
 	err := r.db.QueryRow(context.Background(), query, id).Scan(
 		&waitlist.ID, &waitlist.UserID, &waitlist.EventID, &waitlist.Quantity,
 		&waitlist.Priority, &waitlist.Status, &waitlist.JoinedAt,
@@ -88,13 +88,13 @@ func (r *waitlistRepositoryImpl) GetByID(id string) (*model.Waitlist, error) {
 	return waitlist, nil
 }
 
-func (r *waitlistRepositoryImpl) GetByUserAndEvent(userID, eventID string) (*model.Waitlist, error) {
+func (r *waitlistRepositoryImpl) GetByUserAndEvent(userID, eventID string) (*waitlist.Waitlist, error) {
 	query := `
 		SELECT id, user_id, event_id, quantity, priority, status, 
 			joined_at, notified_at, expires_at, created_at, updated_at
 		FROM waitlist WHERE user_id = $1 AND event_id = $2`
 
-	waitlist := &model.Waitlist{}
+	waitlist := &waitlist.Waitlist{}
 	err := r.db.QueryRow(context.Background(), query, userID, eventID).Scan(
 		&waitlist.ID, &waitlist.UserID, &waitlist.EventID, &waitlist.Quantity,
 		&waitlist.Priority, &waitlist.Status, &waitlist.JoinedAt,
@@ -107,7 +107,7 @@ func (r *waitlistRepositoryImpl) GetByUserAndEvent(userID, eventID string) (*mod
 	return waitlist, nil
 }
 
-func (r *waitlistRepositoryImpl) GetByEventID(eventID string, limit, offset int) ([]*model.Waitlist, error) {
+func (r *waitlistRepositoryImpl) GetByEventID(eventID string, limit, offset int) ([]*waitlist.Waitlist, error) {
 	query := `
 		SELECT id, user_id, event_id, quantity, priority, status, 
 			joined_at, notified_at, expires_at, created_at, updated_at
@@ -122,9 +122,9 @@ func (r *waitlistRepositoryImpl) GetByEventID(eventID string, limit, offset int)
 	}
 	defer rows.Close()
 
-	var waitlists []*model.Waitlist
+	var waitlists []*waitlist.Waitlist
 	for rows.Next() {
-		waitlist := &model.Waitlist{}
+		waitlist := &waitlist.Waitlist{}
 		err := rows.Scan(
 			&waitlist.ID, &waitlist.UserID, &waitlist.EventID, &waitlist.Quantity,
 			&waitlist.Priority, &waitlist.Status, &waitlist.JoinedAt,
@@ -138,7 +138,7 @@ func (r *waitlistRepositoryImpl) GetByEventID(eventID string, limit, offset int)
 	return waitlists, rows.Err()
 }
 
-func (r *waitlistRepositoryImpl) GetByUserID(userID string, limit, offset int) ([]*model.Waitlist, error) {
+func (r *waitlistRepositoryImpl) GetByUserID(userID string, limit, offset int) ([]*waitlist.Waitlist, error) {
 	query := `
 		SELECT id, user_id, event_id, quantity, priority, status, 
 			joined_at, notified_at, expires_at, created_at, updated_at
@@ -153,9 +153,9 @@ func (r *waitlistRepositoryImpl) GetByUserID(userID string, limit, offset int) (
 	}
 	defer rows.Close()
 
-	var waitlists []*model.Waitlist
+	var waitlists []*waitlist.Waitlist
 	for rows.Next() {
-		waitlist := &model.Waitlist{}
+		waitlist := &waitlist.Waitlist{}
 		err := rows.Scan(
 			&waitlist.ID, &waitlist.UserID, &waitlist.EventID, &waitlist.Quantity,
 			&waitlist.Priority, &waitlist.Status, &waitlist.JoinedAt,
@@ -169,7 +169,7 @@ func (r *waitlistRepositoryImpl) GetByUserID(userID string, limit, offset int) (
 	return waitlists, rows.Err()
 }
 
-func (r *waitlistRepositoryImpl) GetNextInQueue(eventID string, quantity int) ([]*model.Waitlist, error) {
+func (r *waitlistRepositoryImpl) GetNextInQueue(eventID string, quantity int) ([]*waitlist.Waitlist, error) {
 	query := `
 		SELECT id, user_id, event_id, quantity, priority, status, 
 			joined_at, notified_at, expires_at, created_at, updated_at
@@ -183,9 +183,9 @@ func (r *waitlistRepositoryImpl) GetNextInQueue(eventID string, quantity int) ([
 	}
 	defer rows.Close()
 
-	var waitlists []*model.Waitlist
+	var waitlists []*waitlist.Waitlist
 	for rows.Next() {
-		waitlist := &model.Waitlist{}
+		waitlist := &waitlist.Waitlist{}
 		err := rows.Scan(
 			&waitlist.ID, &waitlist.UserID, &waitlist.EventID, &waitlist.Quantity,
 			&waitlist.Priority, &waitlist.Status, &waitlist.JoinedAt,
@@ -208,7 +208,7 @@ func (r *waitlistRepositoryImpl) CountByEventID(eventID string) (int, error) {
 	return count, err
 }
 
-func (r *waitlistRepositoryImpl) UpdateStatus(id string, status model.WaitlistStatus) error {
+func (r *waitlistRepositoryImpl) UpdateStatus(id string, status waitlist.WaitlistStatus) error {
 	query := `UPDATE waitlist SET status = $2, updated_at = $3 WHERE id = $1`
 
 	result, err := r.db.Exec(context.Background(), query, id, status, time.Now())

@@ -4,17 +4,18 @@ import (
 	"net/http"
 	"strconv"
 
-	"evently/internal/domain/usecase"
+	"evently/internal/domain/booking"
+	"evently/internal/domain/events"
 
 	"github.com/gin-gonic/gin"
 )
 
 type AdminHandler struct {
-	eventUsecase   usecase.EventUsecase
-	bookingUsecase usecase.BookingUsecase
+	eventUsecase   events.EventUsecase
+	bookingUsecase booking.BookingUsecase
 }
 
-func NewAdminHandler(eventUsecase usecase.EventUsecase, bookingUsecase usecase.BookingUsecase) *AdminHandler {
+func NewAdminHandler(eventUsecase events.EventUsecase, bookingUsecase booking.BookingUsecase) *AdminHandler {
 	return &AdminHandler{
 		eventUsecase:   eventUsecase,
 		bookingUsecase: bookingUsecase,

@@ -5,23 +5,22 @@ import (
 	"fmt"
 	"time"
 
-	"evently/internal/domain/model"
-	"evently/internal/domain/usecase"
+	"evently/internal/domain/events"
 
 	"github.com/google/uuid"
 )
 
 type eventUsecaseImpl struct {
-	eventRepo model.EventRepository
+	eventRepo events.EventRepository
 }
 
-func NewEventUsecase(eventRepo model.EventRepository) usecase.EventUsecase {
+func NewEventUsecase(eventRepo events.EventRepository) events.EventUsecase {
 	return &eventUsecaseImpl{
 		eventRepo: eventRepo,
 	}
 }
 
-func (u *eventUsecaseImpl) CreateEvent(ctx context.Context, event *model.Event) error {
+func (u *eventUsecaseImpl) CreateEvent(ctx context.Context, event *events.Event) error {
 	event.ID = uuid.New().String()
 	event.CreatedAt = time.Now()
 	event.UpdatedAt = time.Now()
@@ -35,7 +34,7 @@ func (u *eventUsecaseImpl) CreateEvent(ctx context.Context, event *model.Event) 
 	return u.eventRepo.Create(event)
 }
 
-func (u *eventUsecaseImpl) UpdateEvent(ctx context.Context, event *model.Event) error {
+func (u *eventUsecaseImpl) UpdateEvent(ctx context.Context, event *events.Event) error {
 	existingEvent, err := u.eventRepo.GetByID(event.ID)
 	if err != nil {
 		return fmt.Errorf("event not found: %w", err)
@@ -63,11 +62,11 @@ func (u *eventUsecaseImpl) DeleteEvent(ctx context.Context, eventID string) erro
 	return u.eventRepo.Delete(eventID)
 }
 
-func (u *eventUsecaseImpl) GetEvent(ctx context.Context, eventID string) (*model.Event, error) {
+func (u *eventUsecaseImpl) GetEvent(ctx context.Context, eventID string) (*events.Event, error) {
 	return u.eventRepo.GetByID(eventID)
 }
 
-func (u *eventUsecaseImpl) ListUpcomingEvents(ctx context.Context, limit, offset int) ([]*model.Event, error) {
+func (u *eventUsecaseImpl) ListUpcomingEvents(ctx context.Context, limit, offset int) ([]*events.Event, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -78,7 +77,7 @@ func (u *eventUsecaseImpl) ListUpcomingEvents(ctx context.Context, limit, offset
 	return u.eventRepo.ListUpcoming(limit, offset)
 }
 
-func (u *eventUsecaseImpl) ListAllEvents(ctx context.Context, limit, offset int) ([]*model.Event, error) {
+func (u *eventUsecaseImpl) ListAllEvents(ctx context.Context, limit, offset int) ([]*events.Event, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -89,15 +88,15 @@ func (u *eventUsecaseImpl) ListAllEvents(ctx context.Context, limit, offset int)
 	return u.eventRepo.ListAll(limit, offset)
 }
 
-func (u *eventUsecaseImpl) GetMostPopularEvents(ctx context.Context, limit int) ([]*model.EventAnalytics, error) {
+func (u *eventUsecaseImpl) GetMostPopularEvents(ctx context.Context, limit int) ([]*events.EventAnalytics, error) {
 	if limit <= 0 {
 		limit = 10
 	}
 
-	return u.eventRepo.GetMostPopularEvents(limit)
+	return u.eventRepo.GetMostPopularEvents(ctx, limit)
 }
 
-func (u *eventUsecaseImpl) validateEvent(event *model.Event) error {
+func (u *eventUsecaseImpl) validateEvent(event *events.Event) error {
 	if event.Name == "" {
 		return fmt.Errorf("event name is required")
 	}

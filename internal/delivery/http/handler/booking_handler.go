@@ -5,18 +5,18 @@ import (
 	"strconv"
 	"strings"
 
-	"evently/internal/domain/model"
-	"evently/internal/domain/usecase"
+	"evently/internal/domain/booking"
+	"evently/internal/domain/waitlist"
 
 	"github.com/gin-gonic/gin"
 )
 
 type BookingHandler struct {
-	bookingUsecase  usecase.BookingUsecase
-	waitlistUsecase usecase.WaitlistUsecase
+	bookingUsecase  booking.BookingUsecase
+	waitlistUsecase waitlist.WaitlistUsecase
 }
 
-func NewBookingHandler(bookingUsecase usecase.BookingUsecase, waitlistUsecase usecase.WaitlistUsecase) *BookingHandler {
+func NewBookingHandler(bookingUsecase booking.BookingUsecase, waitlistUsecase waitlist.WaitlistUsecase) *BookingHandler {
 	return &BookingHandler{
 		bookingUsecase:  bookingUsecase,
 		waitlistUsecase: waitlistUsecase,
@@ -24,7 +24,7 @@ func NewBookingHandler(bookingUsecase usecase.BookingUsecase, waitlistUsecase us
 }
 
 func (h *BookingHandler) CreateBooking(c *gin.Context) {
-	var booking model.Booking
+	var booking booking.Booking
 	if err := c.ShouldBindJSON(&booking); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -88,6 +88,7 @@ func (h *BookingHandler) CancelBooking(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "booking cancelled successfully"})
 }
 
+// TODO: Shorten GetBooking and move everything inside usecase
 func (h *BookingHandler) GetBooking(c *gin.Context) {
 	bookingID := c.Param("id")
 	if bookingID == "" {
@@ -113,7 +114,7 @@ func (h *BookingHandler) GetBooking(c *gin.Context) {
 				}
 
 				position := 0
-				if wl.Status == model.WaitlistStatusActive {
+				if wl.Status == waitlist.WaitlistStatusActive {
 					pos, perr := h.waitlistUsecase.GetWaitlistPosition(c.Request.Context(), wl.UserID, wl.EventID)
 					if perr == nil {
 						position = pos
@@ -133,7 +134,6 @@ func (h *BookingHandler) GetBooking(c *gin.Context) {
 		return
 	}
 
-	// Check if user owns the booking or is admin
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})

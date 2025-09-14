@@ -9,9 +9,8 @@ import (
 
 // Create, update, and manage events.
 // View booking analytics (total bookings, most popular events, capacity utilization).
-
-func SetupAdminRoutes(router *gin.Engine, adminHandler *handler.AdminHandler, jwtMiddleware *middleware.JWTConfig) {
-	adminGroup := router.Group("/api/admin")
+func SetupAdminRoutes(router *gin.RouterGroup, adminHandler *handler.AdminHandler, jwtMiddleware *middleware.JWTConfig) {
+	adminGroup := router.Group("/admin")
 	adminGroup.Use(jwtMiddleware.AuthMiddleware())
 	adminGroup.Use(middleware.AdminMiddleware())
 	{

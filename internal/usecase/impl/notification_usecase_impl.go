@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"evently/internal/domain/events"
 	"evently/internal/domain/model"
 	"evently/internal/domain/usecase"
 
@@ -13,12 +14,12 @@ import (
 
 type notificationUsecaseImpl struct {
 	notificationRepo model.NotificationRepository
-	eventRepo        model.EventRepository
+	eventRepo        events.EventRepository
 }
 
 func NewNotificationUsecase(
 	notificationRepo model.NotificationRepository,
-	eventRepo model.EventRepository,
+	eventRepo events.EventRepository,
 ) usecase.NotificationUsecase {
 	return &notificationUsecaseImpl{
 		notificationRepo: notificationRepo,

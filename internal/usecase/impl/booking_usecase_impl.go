@@ -6,24 +6,25 @@ import (
 	"sync"
 	"time"
 
-	"evently/internal/domain/model"
-	"evently/internal/domain/usecase"
+	"evently/internal/domain/booking"
+	"evently/internal/domain/events"
+	"evently/internal/domain/waitlist"
 
 	"github.com/google/uuid"
 )
 
 type bookingUsecaseImpl struct {
-	bookingRepo     model.BookingRepository
-	eventRepo       model.EventRepository
-	waitlistUsecase usecase.WaitlistUsecase
+	bookingRepo     booking.BookingRepository
+	eventRepo       events.EventRepository
+	waitlistUsecase waitlist.WaitlistUsecase
 	mu              sync.RWMutex // For handling concurrent bookings
 }
 
 func NewBookingUsecase(
-	bookingRepo model.BookingRepository,
-	eventRepo model.EventRepository,
-	waitlistUsecase usecase.WaitlistUsecase,
-) usecase.BookingUsecase {
+	bookingRepo booking.BookingRepository,
+	eventRepo events.EventRepository,
+	waitlistUsecase waitlist.WaitlistUsecase,
+) booking.BookingUsecase {
 	return &bookingUsecaseImpl{
 		bookingRepo:     bookingRepo,
 		eventRepo:       eventRepo,
@@ -31,13 +32,13 @@ func NewBookingUsecase(
 	}
 }
 
-func (u *bookingUsecaseImpl) CreateBooking(ctx context.Context, booking *model.Booking) error {
+func (u *bookingUsecaseImpl) CreateBooking(ctx context.Context, newBooking *booking.Booking) error {
 	// Use mutex to handle concurrent bookings safely
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
 	// Get event details
-	event, err := u.eventRepo.GetByID(booking.EventID)
+	event, err := u.eventRepo.GetByID(newBooking.EventID)
 	if err != nil {
 		return fmt.Errorf("event not found: %w", err)
 	}
@@ -48,40 +49,40 @@ func (u *bookingUsecaseImpl) CreateBooking(ctx context.Context, booking *model.B
 	}
 
 	// Check seat availability
-	if event.AvailableSeats < booking.Quantity {
+	if event.AvailableSeats < newBooking.Quantity {
 		return fmt.Errorf("insufficient seats available. Available: %d, Requested: %d",
-			event.AvailableSeats, booking.Quantity)
+			event.AvailableSeats, newBooking.Quantity)
 	}
 
 	// Generate booking ID and set timestamps
-	booking.ID = uuid.New().String()
-	booking.Status = model.BookingStatusPending
-	booking.BookingTime = time.Now()
-	booking.CreatedAt = time.Now()
-	booking.UpdatedAt = time.Now()
-	booking.TotalAmount = float64(booking.Quantity) * event.Price
+	newBooking.ID = uuid.New().String()
+	newBooking.Status = booking.BookingStatusPending
+	newBooking.BookingTime = time.Now()
+	newBooking.CreatedAt = time.Now()
+	newBooking.UpdatedAt = time.Now()
+	newBooking.TotalAmount = float64(newBooking.Quantity) * event.Price
 
 	// Validate booking
-	if err := u.validateBooking(booking); err != nil {
+	if err := u.validateBooking(newBooking); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
 
 	// Create booking
-	if err := u.bookingRepo.Create(booking); err != nil {
+	if err := u.bookingRepo.Create(newBooking); err != nil {
 		return fmt.Errorf("failed to create booking: %w", err)
 	}
 
 	// Update available seats
-	if err := u.eventRepo.UpdateAvailableSeats(booking.EventID, -booking.Quantity); err != nil {
+	if err := u.eventRepo.UpdateAvailableSeats(newBooking.EventID, -newBooking.Quantity); err != nil {
 		// TODO: Implement compensation logic here in production
 		return fmt.Errorf("failed to update seat availability: %w", err)
 	}
 
 	// Update booking status to confirmed
-	booking.Status = model.BookingStatusConfirmed
-	booking.UpdatedAt = time.Now()
+	newBooking.Status = booking.BookingStatusConfirmed
+	newBooking.UpdatedAt = time.Now()
 
-	return u.bookingRepo.Update(booking)
+	return u.bookingRepo.Update(newBooking)
 }
 
 func (u *bookingUsecaseImpl) CancelBooking(ctx context.Context, bookingID, userID string) error {
@@ -89,23 +90,23 @@ func (u *bookingUsecaseImpl) CancelBooking(ctx context.Context, bookingID, userI
 	defer u.mu.Unlock()
 
 	// Get booking
-	booking, err := u.bookingRepo.GetByID(bookingID)
+	oldBooking, err := u.bookingRepo.GetByID(bookingID)
 	if err != nil {
 		return fmt.Errorf("booking not found: %w", err)
 	}
 
 	// Check if user owns the booking
-	if booking.UserID != userID {
+	if oldBooking.UserID != userID {
 		return fmt.Errorf("unauthorized: booking belongs to different user")
 	}
 
 	// Check if booking can be cancelled
-	if booking.Status == model.BookingStatusCancelled {
+	if oldBooking.Status == booking.BookingStatusCancelled {
 		return fmt.Errorf("booking is already cancelled")
 	}
 
 	// Get event to check cancellation policy (e.g., can't cancel within 24 hours)
-	event, err := u.eventRepo.GetByID(booking.EventID)
+	event, err := u.eventRepo.GetByID(oldBooking.EventID)
 	if err != nil {
 		return fmt.Errorf("event not found: %w", err)
 	}
@@ -117,24 +118,24 @@ func (u *bookingUsecaseImpl) CancelBooking(ctx context.Context, bookingID, userI
 
 	// Update booking status
 	now := time.Now()
-	booking.Status = model.BookingStatusCancelled
-	booking.CancelledAt = &now
-	booking.UpdatedAt = now
+	oldBooking.Status = booking.BookingStatusCancelled
+	oldBooking.CancelledAt = &now
+	oldBooking.UpdatedAt = now
 
 	// Update booking
-	if err := u.bookingRepo.Update(booking); err != nil {
+	if err := u.bookingRepo.Update(oldBooking); err != nil {
 		return fmt.Errorf("failed to cancel booking: %w", err)
 	}
 
 	// Return seats to available pool
-	if err := u.eventRepo.UpdateAvailableSeats(booking.EventID, booking.Quantity); err != nil {
+	if err := u.eventRepo.UpdateAvailableSeats(oldBooking.EventID, oldBooking.Quantity); err != nil {
 		// TODO: Implement compensation logic here in production
 		return fmt.Errorf("failed to update seat availability: %w", err)
 	}
 
 	// Process waitlist notifications for newly available seats
 	if u.waitlistUsecase != nil {
-		if err := u.waitlistUsecase.ProcessWaitlistNotifications(ctx, booking.EventID, booking.Quantity); err != nil {
+		if err := u.waitlistUsecase.ProcessWaitlistNotifications(ctx, oldBooking.EventID, oldBooking.Quantity); err != nil {
 			// Log error but don't fail the cancellation
 			fmt.Printf("Failed to process waitlist notifications: %v\n", err)
 		}
@@ -143,11 +144,11 @@ func (u *bookingUsecaseImpl) CancelBooking(ctx context.Context, bookingID, userI
 	return nil
 }
 
-func (u *bookingUsecaseImpl) GetBooking(ctx context.Context, bookingID string) (*model.Booking, error) {
+func (u *bookingUsecaseImpl) GetBooking(ctx context.Context, bookingID string) (*booking.Booking, error) {
 	return u.bookingRepo.GetByID(bookingID)
 }
 
-func (u *bookingUsecaseImpl) GetUserBookings(ctx context.Context, userID string, limit, offset int) ([]*model.Booking, error) {
+func (u *bookingUsecaseImpl) GetUserBookings(ctx context.Context, userID string, limit, offset int) ([]*booking.Booking, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -158,7 +159,7 @@ func (u *bookingUsecaseImpl) GetUserBookings(ctx context.Context, userID string,
 	return u.bookingRepo.GetByUserID(userID, limit, offset)
 }
 
-func (u *bookingUsecaseImpl) GetEventBookings(ctx context.Context, eventID string, limit, offset int) ([]*model.Booking, error) {
+func (u *bookingUsecaseImpl) GetEventBookings(ctx context.Context, eventID string, limit, offset int) ([]*booking.Booking, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -169,11 +170,11 @@ func (u *bookingUsecaseImpl) GetEventBookings(ctx context.Context, eventID strin
 	return u.bookingRepo.GetByEventID(eventID, limit, offset)
 }
 
-func (u *bookingUsecaseImpl) GetBookingAnalytics(ctx context.Context, eventID string) (*model.BookingAnalytics, error) {
+func (u *bookingUsecaseImpl) GetBookingAnalytics(ctx context.Context, eventID string) (*booking.BookingAnalytics, error) {
 	return u.bookingRepo.GetBookingAnalytics(eventID)
 }
 
-func (u *bookingUsecaseImpl) validateBooking(booking *model.Booking) error {
+func (u *bookingUsecaseImpl) validateBooking(booking *booking.Booking) error {
 	if booking.UserID == "" {
 		return fmt.Errorf("user ID is required")
 	}

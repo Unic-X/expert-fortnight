@@ -1,10 +1,10 @@
 package admin
 
-import "evently/internal/domain/model"
+import "evently/internal/domain/events"
 
 type AdminUsecase interface {
-	CreateEvent(event *model.Event) error
-	UpdateEvent(event *model.Event) error
+	CreateEvent(event *events.Event) error
+	UpdateEvent(event *events.Event) error
 	DeleteEvent(eventID string) error
 	GetEventAnalytics(eventID string) (map[string]interface{}, error)
 	GetOverallAnalytics() (map[string]interface{}, error)
