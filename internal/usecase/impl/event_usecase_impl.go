@@ -42,7 +42,7 @@ func (u *eventUsecaseImpl) UpdateEvent(ctx context.Context, event *events.Event)
 
 	event.CreatedAt = existingEvent.CreatedAt
 	event.CreatedBy = existingEvent.CreatedBy
-	event.AvailableSeats = existingEvent.AvailableSeats
+	event.AvailableSeats = event.TotalCapacity - existingEvent.TotalCapacity + existingEvent.AvailableSeats
 	event.CreatedBy = existingEvent.CreatedBy
 	event.UpdatedAt = time.Now()
 
