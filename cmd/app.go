@@ -24,7 +24,7 @@ func NewApplication(container *di.Container) *Application {
 func (a *Application) SetupRoutes() {
 	authHandler := handler.NewAuthHandler(a.container.AuthUseCase)
 	eventHandler := handler.NewEventHandler(a.container.EventUseCase)
-	bookingHandler := handler.NewBookingHandler(a.container.BookingUseCase)
+	bookingHandler := handler.NewBookingHandler(a.container.BookingUseCase, a.container.WaitlistUseCase)
 	adminHandler := handler.NewAdminHandler(a.container.EventUseCase, a.container.BookingUseCase)
 
 	// Setup routes

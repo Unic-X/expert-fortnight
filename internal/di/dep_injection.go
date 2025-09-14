@@ -22,14 +22,18 @@ type Container struct {
 	Pool *pgxpool.Pool
 
 	// Repositories
-	UserRepo    model.UserRepository
-	EventRepo   model.EventRepository
-	BookingRepo model.BookingRepository
+	UserRepo         model.UserRepository
+	EventRepo        model.EventRepository
+	BookingRepo      model.BookingRepository
+	WaitlistRepo     model.WaitlistRepository
+	NotificationRepo model.NotificationRepository
 
 	// Use Cases
-	AuthUseCase    usecase.AuthUseCase
-	EventUseCase   usecase.EventUsecase
-	BookingUseCase usecase.BookingUsecase
+	AuthUseCase         usecase.AuthUseCase
+	EventUseCase        usecase.EventUsecase
+	BookingUseCase      usecase.BookingUsecase
+	WaitlistUseCase     usecase.WaitlistUsecase
+	NotificationUseCase usecase.NotificationUsecase
 
 	// Middleware
 	JWTMiddleware *middleware.JWTConfig
@@ -48,28 +52,38 @@ func NewContainer(ctx context.Context) (*Container, error) {
 		return nil, err
 	}
 
+	// Initialize repositories
 	userRepo := repoImpl.NewUserRepository(pool)
 	eventRepo := repoImpl.NewEventRepository(pool)
 	bookingRepo := repoImpl.NewBookingRepository(pool)
+	waitlistRepo := repoImpl.NewWaitlistRepository(pool)
+	notificationRepo := repoImpl.NewNotificationRepository(pool)
 
+	// Initialize use cases
 	authUseCase := ucImpl.NewAuthUseCase(userRepo, cfg)
 	eventUseCase := ucImpl.NewEventUsecase(eventRepo)
-	bookingUseCase := ucImpl.NewBookingUsecase(bookingRepo, eventRepo)
+	notificationUseCase := ucImpl.NewNotificationUsecase(notificationRepo, eventRepo)
+	waitlistUseCase := ucImpl.NewWaitlistUsecase(waitlistRepo, eventRepo, notificationRepo)
+	bookingUseCase := ucImpl.NewBookingUsecase(bookingRepo, eventRepo, waitlistUseCase)
 
 	jwtMiddleware := middleware.NewJWTConfig()
 
 	server := gin.Default()
 
 	return &Container{
-		Config:         cfg,
-		Pool:           pool,
-		UserRepo:       userRepo,
-		EventRepo:      eventRepo,
-		BookingRepo:    bookingRepo,
-		AuthUseCase:    authUseCase,
-		EventUseCase:   eventUseCase,
-		BookingUseCase: bookingUseCase,
-		JWTMiddleware:  jwtMiddleware,
-		Server:         server,
+		Config:              cfg,
+		Pool:                pool,
+		UserRepo:            userRepo,
+		EventRepo:           eventRepo,
+		BookingRepo:         bookingRepo,
+		WaitlistRepo:        waitlistRepo,
+		NotificationRepo:    notificationRepo,
+		AuthUseCase:         authUseCase,
+		EventUseCase:        eventUseCase,
+		BookingUseCase:      bookingUseCase,
+		WaitlistUseCase:     waitlistUseCase,
+		NotificationUseCase: notificationUseCase,
+		JWTMiddleware:       jwtMiddleware,
+		Server:              server,
 	}, nil
 }
