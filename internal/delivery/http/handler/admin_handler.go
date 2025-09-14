@@ -1,79 +1,82 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
-	"time"
+
+	"evently/internal/domain/usecase"
 
 	"github.com/gin-gonic/gin"
-
-	"evently/internal/domain/model"
-	"evently/internal/domain/usecase/admin"
 )
 
-type adminHandler struct {
-	usecase admin.AdminUsecase
+type AdminHandler struct {
+	eventUsecase   usecase.EventUsecase
+	bookingUsecase usecase.BookingUsecase
 }
 
-func NewAdminHandler(u admin.AdminUsecase) *adminHandler {
-	return &adminHandler{usecase: u}
+func NewAdminHandler(eventUsecase usecase.EventUsecase, bookingUsecase usecase.BookingUsecase) *AdminHandler {
+	return &AdminHandler{
+		eventUsecase:   eventUsecase,
+		bookingUsecase: bookingUsecase,
+	}
 }
 
-func (h *adminHandler) AddEventHandler(c *gin.Context) {
-	name := c.Query("name")
-	venue := c.Query("venue")
-	timeStr := c.Query("time")
-	capacity := c.Query("capacity")
+func (h *AdminHandler) GetEventAnalytics(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 
-	if name == "" || venue == "" || timeStr == "" || capacity == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required fields"})
-		return
-	}
-
-	eventTime, err := time.Parse(time.RFC3339, timeStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid time format. Please use RFC3339 format (e.g., 2006-01-02T15:04:05Z07:00)"})
-		return
-	}
-
-	capacityInt, err := strconv.Atoi(capacity)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Capacity must be a number"})
-		return
-	}
-
-	newEvent := &model.Event{
-		Name:     name,
-		Venue:    venue,
-		Time:     eventTime,
-		Capacity: capacityInt,
-	}
-
-	json.NewDecoder(c.Request.Body).Decode(newEvent)
-
-	err = h.usecase.CreateEvent(newEvent)
-
+	analytics, err := h.eventUsecase.GetMostPopularEvents(c.Request.Context(), limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Event created successfully"})
+	c.JSON(http.StatusOK, gin.H{"analytics": analytics})
 }
 
-func (h *adminHandler) UpdateEventHandler(c *gin.Context) {
+func (h *AdminHandler) GetBookingAnalytics(c *gin.Context) {
+	eventID := c.Param("eventId")
+	if eventID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "event ID is required"})
+		return
+	}
 
+	analytics, err := h.bookingUsecase.GetBookingAnalytics(c.Request.Context(), eventID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"analytics": analytics})
 }
 
-func (h *adminHandler) DeleteEventHandler(c *gin.Context) {
+func (h *AdminHandler) GetAllEvents(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
+	events, err := h.eventUsecase.ListAllEvents(c.Request.Context(), limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"events": events})
 }
 
-func (h *adminHandler) GetEventAnalytics(c *gin.Context) {
+func (h *AdminHandler) GetEventBookings(c *gin.Context) {
+	eventID := c.Param("eventId")
+	if eventID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "event ID is required"})
+		return
+	}
 
-}
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-func (h *adminHandler) GetOverallAnalytics(c *gin.Context) {
+	bookings, err := h.bookingUsecase.GetEventBookings(c.Request.Context(), eventID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
+	c.JSON(http.StatusOK, gin.H{"bookings": bookings})
 }

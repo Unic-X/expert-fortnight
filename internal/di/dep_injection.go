@@ -7,8 +7,8 @@ import (
 	"evently/internal/delivery/http/middleware"
 	"evently/internal/domain/model"
 	"evently/internal/domain/usecase"
-	repoImpl "evently/internal/repository/impl"
 	ucImpl "evently/internal/usecase/impl"
+	repoImpl "evently/internal/usecase/repository"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -48,20 +48,16 @@ func NewContainer(ctx context.Context) (*Container, error) {
 		return nil, err
 	}
 
-	// Initialize repositories
 	userRepo := repoImpl.NewUserRepository(pool)
 	eventRepo := repoImpl.NewEventRepository(pool)
 	bookingRepo := repoImpl.NewBookingRepository(pool)
 
-	// Initialize use cases
 	authUseCase := ucImpl.NewAuthUseCase(userRepo, cfg)
 	eventUseCase := ucImpl.NewEventUsecase(eventRepo)
 	bookingUseCase := ucImpl.NewBookingUsecase(bookingRepo, eventRepo)
 
-	// Initialize middleware
 	jwtMiddleware := middleware.NewJWTConfig()
 
-	// Initialize server
 	server := gin.Default()
 
 	return &Container{

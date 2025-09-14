@@ -22,15 +22,12 @@ func NewEventUsecase(eventRepo model.EventRepository) usecase.EventUsecase {
 }
 
 func (u *eventUsecaseImpl) CreateEvent(ctx context.Context, event *model.Event) error {
-	// Generate ID and set timestamps
 	event.ID = uuid.New().String()
 	event.CreatedAt = time.Now()
 	event.UpdatedAt = time.Now()
 
-	// Set available seats equal to total capacity initially
 	event.AvailableSeats = event.TotalCapacity
 
-	// Validate event data
 	if err := u.validateEvent(event); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
@@ -39,7 +36,6 @@ func (u *eventUsecaseImpl) CreateEvent(ctx context.Context, event *model.Event) 
 }
 
 func (u *eventUsecaseImpl) UpdateEvent(ctx context.Context, event *model.Event) error {
-	// Check if event exists
 	existingEvent, err := u.eventRepo.GetByID(event.ID)
 	if err != nil {
 		return fmt.Errorf("event not found: %w", err)
@@ -51,7 +47,6 @@ func (u *eventUsecaseImpl) UpdateEvent(ctx context.Context, event *model.Event) 
 	event.CreatedBy = existingEvent.CreatedBy
 	event.UpdatedAt = time.Now()
 
-	// Validate updated event data
 	if err := u.validateEvent(event); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
@@ -60,7 +55,6 @@ func (u *eventUsecaseImpl) UpdateEvent(ctx context.Context, event *model.Event) 
 }
 
 func (u *eventUsecaseImpl) DeleteEvent(ctx context.Context, eventID string) error {
-	// Check if event exists
 	_, err := u.eventRepo.GetByID(eventID)
 	if err != nil {
 		return fmt.Errorf("event not found: %w", err)
